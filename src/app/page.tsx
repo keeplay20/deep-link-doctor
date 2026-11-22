@@ -2,6 +2,7 @@
 import { useEffect, useState } from "react";
 import { motion, AnimatePresence, type Variants } from "framer-motion";
 import NetworkBackground from "./NetworkBackground";
+import { sampleReport } from "./sampleReport";
 import type { Report, CheckResult, Status } from "@/engine/types";
 
 const badge: Record<Status, string> = {
@@ -31,6 +32,7 @@ export default function Home() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [report, setReport] = useState<Report | null>(null);
+  const [isSample, setIsSample] = useState(false);
   const [dark, setDark] = useState(true);
   useEffect(() => { setDark(document.documentElement.classList.contains("dark")); }, []);
   function toggleTheme() {
@@ -40,10 +42,12 @@ export default function Home() {
     try { localStorage.setItem("theme", next ? "dark" : "light"); } catch {}
   }
 
+  function showSample() { setError(null); setIsSample(true); setReport(sampleReport); }
+
   async function submit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     const f = new FormData(e.currentTarget);
-    setLoading(true); setError(null); setReport(null);
+    setLoading(true); setError(null); setReport(null); setIsSample(false);
     try {
       const res = await fetch("/api/diagnose", {
         method: "POST",
@@ -174,6 +178,13 @@ export default function Home() {
               </span>
             ) : "Run diagnostics"}
           </motion.button>
+          <button
+            type="button"
+            onClick={showSample}
+            className="ml-3 rounded-lg border border-slate-300 px-4 py-2.5 text-sm font-medium text-slate-700 transition hover:bg-slate-100 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800"
+          >
+            See sample report
+          </button>
         </motion.form>
 
         <div className="min-w-0">
@@ -190,6 +201,11 @@ export default function Home() {
             </motion.p>
           )}
         </AnimatePresence>
+        {report && isSample && (
+          <p className="mb-3 rounded-lg border border-indigo-200 bg-indigo-50 px-3 py-2 text-xs text-indigo-800 dark:border-indigo-500/30 dark:bg-indigo-500/10 dark:text-indigo-200">
+            Sample report with made-up data for demonstration. Not a live scan.
+          </p>
+        )}
         {report && <ReportView report={report} />}
         {!report && !error && !loading && (
           <div className="flex min-h-48 items-center justify-center rounded-2xl border border-dashed border-slate-300 p-8 text-center text-sm text-slate-500 dark:border-slate-700 dark:text-slate-400">

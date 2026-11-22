@@ -45,9 +45,9 @@ export const InputSchema = z.object({
     .optional()
     .or(z.literal("").transform(() => undefined)),
   /** SHA-256 signing cert fingerprints */
-  androidFingerprints: z.array(z.string().trim()).default([]),
+  androidFingerprints: z.array(z.string().trim()).max(5, "At most 5 fingerprints").default([]),
   /** Paths that should open the app, e.g. /product/123 */
-  paths: z.array(z.string().trim().startsWith("/")).default([]),
+  paths: z.array(z.string().trim().max(200).startsWith("/", "Paths must start with /")).max(10, "At most 10 paths").default([]),
 });
 
 export type DiagnoseInput = z.infer<typeof InputSchema>;
