@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { httpGet, errMsg } from "./net";
 import { globMatch } from "./match";
+import { campaignHostsMatch } from "./campaign";
 import type { CheckResult, DiagnoseInput, Options } from "./types";
 
 const base = { module: "ios" as const };
@@ -80,6 +81,12 @@ export function analyzeAasa(body: string, input: DiagnoseInput): CheckResult[] {
     out.push({ ...base, id: "aasa.appid", title: "App ID match", status: "info",
       message: "No iOS App ID provided; skipped match.", evidence: `Listed: ${ids.join(", ")}`,
       fix: "Provide TEAMID.bundleId to verify it is listed." });
+    if (input.campaigns.length) {
+      out.push({ ...base, id: "aasa.campaign", title: "Campaign links", status: "info",
+        message: "Campaign URLs provided but iOS App ID missing — AASA path rules were not evaluated.",
+        evidence: input.campaigns.map((c) => c.label).join("\n"),
+        fix: "Add your TEAMID.bundleId to see whether each campaign link is matched or excluded in AASA." });
+    }
     return out;
   }
   if (!mine.length) {
@@ -95,15 +102,22 @@ export function analyzeAasa(body: string, input: DiagnoseInput): CheckResult[] {
   out.push({ ...base, id: "aasa.appid", title: "App ID match", status: "pass",
     message: `${input.iosAppId} is listed.` });
 
-  for (const path of input.paths) {
-    const verdicts = mine.map((d) => evaluatePath(d, path));
+  for (const c of input.campaigns) {
+    if (c.urlHost && !campaignHostsMatch(input.domain, c.urlHost)) {
+      out.push({ ...base, id: `campaign.host:${c.path}`, title: "Campaign host", status: "warn",
+        message: `Link host (${c.urlHost}) differs from the domain you entered (${input.domain.split(":")[0]}).`,
+        evidence: c.label,
+        fix: `Universal Links apply per host. Re-run diagnostics with domain ${c.urlHost}, or use campaign links on ${input.domain}.` });
+    }
+    const verdicts = mine.map((d) => evaluatePath(d, c.path));
     const hit = verdicts.find((v) => v.matched);
     const excluded = verdicts.find((v) => !v.matched && v.rule);
-    out.push({ ...base, id: `aasa.path:${path}`, title: `Path ${path}`,
+    const pathname = c.path.split("?")[0]!;
+    out.push({ ...base, id: `aasa.path:${c.path}`, title: `Campaign link`,
       status: hit ? "pass" : "fail",
-      message: hit ? "Opens the app via Universal Links." : excluded ? "Explicitly excluded by an AASA rule." : "No AASA rule matches this path.",
-      evidence: hit?.rule ?? excluded?.rule,
-      fix: hit ? undefined : `Add a component such as {"/":"${path.split("/").slice(0, 2).join("/")}/*"} (or remove the exclusion).` });
+      message: hit ? "Opens the app via Universal Links." : excluded ? "Explicitly excluded by an AASA rule." : "No AASA rule matches this campaign path.",
+      evidence: `${c.label}\n${hit?.rule ?? excluded?.rule ?? "(no matching rule)"}`,
+      fix: hit ? undefined : `Add a component such as {"/":"${pathname.split("/").slice(0, 2).join("/") || "/"}/*"} (or remove the exclusion).` });
   }
   return out;
 }

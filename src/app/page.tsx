@@ -151,14 +151,14 @@ export default function Home() {
           </label>
 
           <label className="block text-sm font-medium">
-            Paths that should open the app <span className="font-normal text-slate-400">(one per line, optional)</span>
+            Campaign URLs or paths <span className="font-normal text-slate-400">(one per line, optional)</span>
             <textarea
               name="paths"
               rows={3}
-              placeholder={"/product/123\n/orders/98765\n/invite/summer-sale"}
-              className={input + " font-mono"}
+              placeholder={"https://example.com/offer/summer?utm=email\n/product/123"}
+              className={input + " font-mono text-xs"}
             />
-            <span className={hint}>Each path must start with /</span>
+            <span className={hint}>Paste the full link from your ad or email, or a path like /app/offer. We check whether AASA includes or excludes it (iOS App ID required).</span>
           </label>
 
           <motion.button

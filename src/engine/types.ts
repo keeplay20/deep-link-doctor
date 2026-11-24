@@ -1,4 +1,7 @@
 import { z } from "zod";
+import { parseCampaignEntry, type CampaignTarget } from "./campaign";
+
+export type { CampaignTarget };
 
 export type Status = "pass" | "fail" | "warn" | "info";
 export type Module = "domain" | "ios" | "android" | "redirects";
@@ -46,11 +49,32 @@ export const InputSchema = z.object({
     .or(z.literal("").transform(() => undefined)),
   /** SHA-256 signing cert fingerprints */
   androidFingerprints: z.array(z.string().trim()).max(5, "At most 5 fingerprints").default([]),
-  /** Paths that should open the app, e.g. /product/123 */
-  paths: z.array(z.string().trim().max(200).startsWith("/", "Paths must start with /")).max(10, "At most 10 paths").default([]),
-});
+  /** Campaign URLs (https://…) or paths (/offer/…) to test against AASA rules */
+  paths: z.array(z.string().trim().max(500)).max(10, "At most 10 campaign URLs or paths").default([]),
+})
+  .superRefine((data, ctx) => {
+    for (let i = 0; i < data.paths.length; i++) {
+      try {
+        parseCampaignEntry(data.paths[i]!, data.domain);
+      } catch (e) {
+        ctx.addIssue({
+          code: "custom",
+          path: ["paths", i],
+          message: e instanceof Error ? e.message : "Invalid campaign URL or path",
+        });
+      }
+    }
+  })
+  .transform((data) => {
+    const campaigns = data.paths.map((p) => parseCampaignEntry(p, data.domain));
+    return {
+      ...data,
+      campaigns,
+      paths: campaigns.map((c) => c.path),
+    };
+  });
 
-export type DiagnoseInput = z.infer<typeof InputSchema>;
+export type DiagnoseInput = z.output<typeof InputSchema>;
 export type DiagnoseInputRaw = z.input<typeof InputSchema>;
 
 export interface Options {

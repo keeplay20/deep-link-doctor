@@ -8,6 +8,7 @@ export * from "./types";
 export { analyzeAasa, evaluatePath } from "./ios";
 export { analyzeAssetLinks } from "./android";
 export { normalizeFingerprint, globMatch } from "./match";
+export { parseCampaignEntry, campaignHostsMatch } from "./campaign";
 
 export function summarize(results: CheckResult[]): Record<Status, number> {
   const s: Record<Status, number> = { pass: 0, fail: 0, warn: 0, info: 0 };

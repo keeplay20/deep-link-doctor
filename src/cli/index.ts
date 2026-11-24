@@ -6,7 +6,7 @@ const all = (k: string) => args.flatMap((a, i) => (a === `--${k}` ? [args[i + 1]
 
 const domain = args.find((a) => !a.startsWith("--") && args[args.indexOf(a) - 1]?.startsWith("--") !== true);
 if (!domain) {
-  console.error("Usage: deeplink-doctor <domain> [--ios TEAMID.bundle] [--package com.app] [--sha256 FP]... [--path /p]... [--json]");
+  console.error("Usage: deeplink-doctor <domain> [--ios TEAMID.bundle] [--package com.app] [--sha256 FP]... [--path URL-or-/path]... [--json]");
   process.exit(2);
 }
 const icon = { pass: "✔", fail: "✖", warn: "!", info: "i" } as const;

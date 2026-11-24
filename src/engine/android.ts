@@ -114,5 +114,14 @@ export async function checkAndroid(input: DiagnoseInput, opts: Options): Promise
   if (!/application\/json/i.test(ct)) out.push({ ...base, id: "al.ctype", title: "assetlinks content-type", status: "warn",
     message: `Content-Type is "${ct || "missing"}", expected application/json.`,
     fix: "Serve with Content-Type: application/json." });
-  return [...out, ...analyzeAssetLinks(res.body, input)];
+  const hints = input.campaigns.map((c) => ({
+    ...base,
+    id: `campaign.android:${c.path}`,
+    title: "Campaign link (Android)",
+    status: "info" as const,
+    message: "assetlinks.json does not define per-path rules. Confirm your app's intent filter covers this path.",
+    evidence: c.label,
+    fix: "In AndroidManifest, ensure the autoVerify VIEW intent filter's pathPrefix or pathPattern includes this campaign path.",
+  }));
+  return [...out, ...analyzeAssetLinks(res.body, input), ...hints];
 }
