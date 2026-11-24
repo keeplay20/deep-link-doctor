@@ -4,6 +4,7 @@ import { motion, AnimatePresence, type Variants } from "framer-motion";
 import NetworkBackground from "./NetworkBackground";
 import { sampleReport } from "./sampleReport";
 import type { Report, CheckResult, Status } from "@/engine/types";
+import { captureClient } from "@/lib/analytics-client";
 
 const badge: Record<Status, string> = {
   pass: "bg-emerald-100 text-emerald-800 dark:bg-emerald-500/20 dark:text-emerald-300",
@@ -42,12 +43,24 @@ export default function Home() {
     try { localStorage.setItem("theme", next ? "dark" : "light"); } catch {}
   }
 
-  function showSample() { setError(null); setIsSample(true); setReport(sampleReport); }
+  function showSample() {
+    setError(null);
+    setIsSample(true);
+    setReport(sampleReport);
+    captureClient("sample_report_viewed");
+  }
 
   async function submit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     const f = new FormData(e.currentTarget);
     setLoading(true); setError(null); setReport(null); setIsSample(false);
+    const paths = lines(String(f.get("paths") ?? ""));
+    captureClient("diagnose_submitted", {
+      has_ios_app_id: Boolean(String(f.get("iosAppId") ?? "").trim()),
+      has_android_package: Boolean(String(f.get("androidPackage") ?? "").trim()),
+      fingerprint_count: lines(String(f.get("fp") ?? "")).length,
+      campaign_count: paths.length,
+    });
     try {
       const res = await fetch("/api/diagnose", {
         method: "POST",
@@ -57,13 +70,14 @@ export default function Home() {
           iosAppId: f.get("iosAppId"),
           androidPackage: f.get("androidPackage"),
           androidFingerprints: lines(String(f.get("fp") ?? "")),
-          paths: lines(String(f.get("paths") ?? "")),
+          paths,
         }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.issues?.map((i: any) => i.message).join("; ") ?? data.error);
       setReport(data);
     } catch (err) {
+      captureClient("diagnose_client_error", { message: err instanceof Error ? err.message.slice(0, 120) : "unknown" });
       setError(err instanceof Error ? err.message : "Something went wrong");
     } finally { setLoading(false); }
   }
@@ -219,6 +233,9 @@ export default function Home() {
         )}
         </div>
         </div>
+        <p className="mt-10 text-center text-xs text-slate-500 dark:text-slate-500">
+          Optional usage analytics (hostname and result counts) via PostHog when configured. No fingerprints or app secrets are sent.
+        </p>
       </main>
     </div>
   );
